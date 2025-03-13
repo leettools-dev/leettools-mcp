@@ -5,7 +5,7 @@ description = "MCP server that searches web and local Knowledge Base"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-    {name = "LinkTimeCloud"}
+    {name = "leettools-dev"}
 ]
 license = {text = "Apache-2.0"}
 classifiers = [
@@ -30,5 +30,5 @@ package-dir = {"" = "src"}
 packages = ["leettools_mcp"]
 
 [project.urls]
-"Homepage" = "https://github.com/LinkTime-Corp/leettools-mcp"
-"Bug Tracker" = "https://github.com/LinkTime-Corp/leettools-mcp/issues"
+"Homepage" = "https://github.com/leettools-dev/leettools-mcp"
+"Bug Tracker" = "https://github.com/leettools-dev/leettools-mcp/issues"

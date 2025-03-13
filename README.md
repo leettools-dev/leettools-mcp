@@ -28,7 +28,8 @@ LeetTools distinguishes itself from other web search MCP servers by integrating 
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone this repository
-git clone https://github.com/LinkTime-Corp/leettools-mcp.git
+
+git clone https://github.com/leettools-dev/leettools-mcp.git
 cd leettools-mcp
 
 # Create virtual environment and install package in development mode
