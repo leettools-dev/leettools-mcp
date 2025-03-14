@@ -57,7 +57,7 @@ Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json t
 ```json
 {
     "mcpServers": {
-        "leettools-search": {
+        "leettools": {
             "command": "uv",
             "args": [
                 "--directory",
