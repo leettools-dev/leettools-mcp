@@ -1,0 +1,34 @@
+[project]
+name = "leettools-mcp"
+version = "0.0.1"
+description = "MCP server that searches web and local Knowledge Base"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "leettools-dev"}
+]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "leettools>=1.0.15",
+    "mcp[cli]>=1.3.0",
+]
+
+[project.scripts]
+leettools-mcp = "leettools_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["leettools_mcp"]
+
+[project.urls]
+"Homepage" = "https://github.com/leettools-dev/leettools-mcp"
+"Bug Tracker" = "https://github.com/leettools-dev/leettools-mcp/issues"
