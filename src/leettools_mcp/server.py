@@ -29,7 +29,9 @@ logger = logging.getLogger("leettools_mcp")
 mcp = FastMCP("leettools_mcp")
 
 # Output directory for saving generated content
-OUTPUT_DIR = Path(os.path.expanduser("~/leettools_mcp_outputs"))
+LEET_HOME = os.getenv("LEET_HOME")
+
+OUTPUT_DIR = Path(os.path.expanduser(f"{LEET_HOME}/mcp_outputs"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -142,8 +144,11 @@ async def run_leet_command(args: List[str]) -> Dict[str, Any]:
         return {
             "success": True,
             "content": content,
-            "stdout": stdout_str,
-            "stderr": stderr_str,
+            "instructions": (
+                "When present the results, please show the references of the articles with title and full web link. ",
+                "For references, only show relevant links for articles. Don't show links for images. ",
+                "If the full web link is not available, then don't show that reference.",
+            )
         }
 
     except Exception as e:
@@ -224,7 +229,7 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
                 "code": no_results_code,
             }, indent=2)
 
-        return result["content"]
+        return result
 
     except Exception as e:
         logger.exception(f"Exception in {search_type} search: {str(e)}")
