@@ -2,9 +2,14 @@
 
 An MCP server implementation that integrates the LeetTools, providing both web and local search capabilities.
 
+## What is LeetTools?
+LeetTools is an AI-powered search assistant that enables highly customizable search workflows and delivers tailored output formats from both web and local knowledge bases. Its automated document pipeline handles data ingestion, indexing, and storage, so you can focus on developing workflows without worrying about the underlying infrastructure.
+
+For more details, visit the [LeetTools GitHub Repository](https://github.com/leettools-dev/leettools).
+
 ## Smart Search
 
-LeetTools distinguishes itself from other web search MCP servers by integrating searching, scraping, and filtering into a single tool. By leveraging Google Custom Search and an in-memory vector database, it delivers highly relevant and accurate results.
+LeetTools MCP server distinguishes itself from other web search MCP servers by integrating searching, scraping, and filtering into a single tool. By leveraging web search and an in-memory vector database, it delivers highly relevant and accurate results.
 
 ## Tools
 
@@ -97,6 +102,6 @@ Claude will retrieve information from your knowledge base and provide a response
 
 ## License
 
-This MCP server is licensed under the Apache License, Version 2.0 (the "License"). You may not use this software except in compliance with the License. A copy of the License is provided in the LICENSE file in this repository.
+The LeetTools MCP server is licensed under the Apache License, Version 2.0 (the "License"). You may not use this software except in compliance with the License. A copy of the License is provided in the LICENSE file in this repository.
 
 Unless required by applicable law or agreed to in writing, the software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
