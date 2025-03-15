@@ -40,7 +40,7 @@ cd leettools-mcp
 # Create virtual environment and install package in development mode
 uv venv
 source .venv/bin/activate
-uv add "mcp[cli]" leettools
+uv add torch==2.2.2 "mcp[cli]" leettools
 
 # LeetHome: By default the data is saved under ${HOME}/leettools, you can set a different LeetHome
 export LEET_HOME=<your_leet_home>
@@ -51,8 +51,9 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
 ```
 
 ## Usage with Claude Desktop
+1. Follow this [link](https://support.anthropic.com/en/articles/10065433-installing-claude-for-desktop) to install Claude Destop App.
 
-Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json to include the following:
+2. Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json to include the following:
 
 ```json
 {
@@ -75,6 +76,11 @@ Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json t
 ```
 > **Important:** You may need to put the full path to the `uv` executable in the command field. 
 > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+
+3. If you encounter issues, follow this [link](https://modelcontextprotocol.io/docs/tools/debugging#debugging-in-claude-desktop) for debugging guidance. You can also check the MCP server log with the following command:
+```bash
+tail -n 200 -F ~/Library/Logs/Claude/mcp-server-leettools.log
+```
 
 ## Example Usage
 
