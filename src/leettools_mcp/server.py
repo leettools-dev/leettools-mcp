@@ -7,11 +7,12 @@ and other AI assistants that support the Model Context Protocol.
 
 import os
 import sys
-import tempfile
 import subprocess
 import json
 import logging
 import asyncio
+
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 
@@ -30,7 +31,6 @@ mcp = FastMCP("leettools_mcp")
 
 # Output directory for saving generated content
 LEET_HOME = os.getenv("LEET_HOME")
-
 OUTPUT_DIR = Path(os.path.expanduser(f"{LEET_HOME}/mcp_outputs"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -72,7 +72,14 @@ def find_leet_executable() -> str:
 LEET_EXECUTABLE = find_leet_executable()
 
 
-async def run_leet_command(args: List[str]) -> Dict[str, Any]:
+def get_output_filepath(prefix: str) -> str:
+    """Generate a unique filepath for saving output."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = OUTPUT_DIR / f"{prefix}_{timestamp}.md"
+    return str(output_file)
+
+
+async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any]:
     """Run a LeetTools command asynchronously."""
     try:
         # Check if leet is available
@@ -89,12 +96,12 @@ async def run_leet_command(args: List[str]) -> Dict[str, Any]:
                 "stderr": "LeetTools executable not found."
             }
 
-        # Create a temporary output file
-        with tempfile.NamedTemporaryFile(suffix=".md", delete=False) as tmp:
-            tmp_path = tmp.name
+        # Create the output file path directly
+        output_path = get_output_filepath(output_prefix)
+        logger.info(f"Will save output to: {output_path}")
 
         # Add the output path to the arguments
-        cmd = [LEET_EXECUTABLE] + args + ["-o", tmp_path]
+        cmd = [LEET_EXECUTABLE] + args + ["-o", output_path]
         
         # Log the command (with query parameter specially formatted)
         display_cmd = []
@@ -129,17 +136,14 @@ async def run_leet_command(args: List[str]) -> Dict[str, Any]:
                 "stderr": stderr_str
             }
 
-        # Read output file if it exists
+        # Read output file directly
         content = ""
-        if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 0:
-            with open(tmp_path, "r") as f:
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            with open(output_path, "r") as f:
                 content = f.read()
-            logger.info(f"Read {len(content)} bytes from output file")
+            logger.info(f"Read {len(content)} bytes from output file: {output_path}")
         else:
-            logger.warning(f"Output file empty or missing: {tmp_path}")
-
-        # Clean up temporary file
-        Path(tmp_path).unlink(missing_ok=True)
+            logger.warning(f"Output file empty or missing: {output_path}")
 
         return {
             "success": True,
@@ -163,16 +167,6 @@ async def run_leet_command(args: List[str]) -> Dict[str, Any]:
             }, indent=2),
             "error": str(e),
         }
-
-
-def save_output(content: str, prefix: str) -> str:
-    """Save content to a file in the output directory."""
-    from datetime import datetime
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = OUTPUT_DIR / f"{prefix}_{timestamp}.md"
-    output_file.write_text(content)
-    logger.info(f"Saved output to {output_file}")
-    return str(output_file)
 
 
 async def perform_search(search_type: str, query: str, kb_name: str, args: Optional[List[str]] = None) -> str:
@@ -206,8 +200,8 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
         if args:
             cmd_args.extend(args)
 
-        # Run the search command
-        result = await run_leet_command(cmd_args)
+        # Run the search command with the output prefix
+        result = await run_leet_command(cmd_args, output_prefix)
         if not result["success"]:
             error_msg = result.get("stderr", "Unknown error")
             logger.error(f"{search_type.capitalize()} search failed: {error_msg}")
@@ -217,9 +211,6 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
                 "details": error_msg,
                 "code": error_code,
             }, indent=2)
-
-        # Save output and handle empty results
-        save_output(result["content"], output_prefix)
         
         if not result["content"]:
             return json.dumps({
