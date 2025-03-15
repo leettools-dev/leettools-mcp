@@ -13,7 +13,7 @@ import logging
 import asyncio
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
@@ -72,11 +72,12 @@ def find_leet_executable() -> str:
 LEET_EXECUTABLE = find_leet_executable()
 
 
-def get_output_filepath(prefix: str) -> str:
-    """Generate a unique filepath for saving output."""
+def get_output_filepath(prefix: str) -> Tuple[str, str]:
+    """Generate unique filepaths for saving output and logs."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = OUTPUT_DIR / f"{prefix}_{timestamp}.md"
-    return str(output_file)
+    log_file = OUTPUT_DIR / f"{prefix}_{timestamp}.log"
+    return str(output_file), str(log_file)
 
 
 async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any]:
@@ -96,9 +97,10 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
                 "stderr": "LeetTools executable not found."
             }
 
-        # Create the output file path directly
-        output_path = get_output_filepath(output_prefix)
+        # Create the output file paths
+        output_path, log_path = get_output_filepath(output_prefix)
         logger.info(f"Will save output to: {output_path}")
+        logger.info(f"Will save logs to: {log_path}")
 
         # Add the output path to the arguments
         cmd = [LEET_EXECUTABLE] + args + ["-o", output_path]
@@ -115,17 +117,45 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
                 i += 1
         logger.info(f"Running command: {' '.join(display_cmd)}")
 
-        # Execute command asynchronously
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=os.environ.copy(),
-        )
+        # Open the log file
+        with open(log_path, 'w') as log_file:
+            # Write command information to log file
+            log_file.write(f"Command: {' '.join(display_cmd)}\n")
+            log_file.write(f"Timestamp: {datetime.now().isoformat()}\n\n")
+            log_file.write("=== STDOUT & STDERR ===\n\n")
+            log_file.flush()  # Flush to ensure header is written
+            
+            # Execute command asynchronously
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=os.environ.copy(),
+            )
 
-        # Wait for process to complete
-        stdout, stderr = await process.communicate()
-        stdout_str, stderr_str = stdout.decode("utf-8"), stderr.decode("utf-8")
+            # Process stdout and stderr streams concurrently
+            async def read_stream(stream, prefix):
+                collected = []
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    line_str = line.decode('utf-8')
+                    collected.append(line_str)
+                    log_file.write(f"{prefix}: {line_str}")
+                    log_file.flush()
+                return ''.join(collected)
+
+            # Wait for both streams to complete
+            stdout_task = asyncio.create_task(read_stream(process.stdout, "STDOUT"))
+            stderr_task = asyncio.create_task(read_stream(process.stderr, "STDERR"))
+            stdout_str, stderr_str = await asyncio.gather(stdout_task, stderr_task)
+            
+            # Wait for process to complete
+            await process.wait()
+            
+            # Write exit code to log
+            log_file.write(f"\nProcess exited with code: {process.returncode}\n")
 
         if process.returncode != 0:
             logger.error(f"Command failed with exit code {process.returncode}: {stderr_str}")
@@ -133,7 +163,8 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
                 "success": False,
                 "content": "",
                 "stdout": stdout_str,
-                "stderr": stderr_str
+                "stderr": stderr_str,
+                "log_path": log_path
             }
 
         # Read output file directly
@@ -148,6 +179,7 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
         return {
             "success": True,
             "content": content,
+            "log_path": log_path,
             "instructions": (
                 "When present the results, please show the references of the articles with title and full web link. ",
                 "For references, only show relevant links for articles. Don't show links for images. ",
