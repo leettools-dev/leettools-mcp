@@ -55,32 +55,42 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
 
 2. Go to Claude > Settings > Developer > Edit Config > claude_desktop_config.json to include the following:
 
-```json
-{
-    "mcpServers": {
-        "leettools": {
-            "command": "uv",
-            "args": [
-                "--directory",
-                "/ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp",
-                "run",
-                "leettools-mcp"
-            ],
-            "env": {
-                "LEET_HOME": "Your LeetHome location",
-                "EDS_LLM_API_KEY": "Your OpenAI API Key"
+    ```json
+    {
+        "mcpServers": {
+            "leettools": {
+                "command": "uv",
+                "args": [
+                    "--directory",
+                    "/ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp",
+                    "run",
+                    "leettools-mcp"
+                ],
+                "env": {
+                    "LEET_HOME": "Your LeetHome location",
+                    "EDS_LLM_API_KEY": "Your OpenAI API Key"
+                }
             }
         }
     }
-}
-```
-> **Important:** You may need to put the full path to the `uv` executable in the command field. 
-> Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+    ```
+    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
+    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
 
-3. If you encounter issues, follow this [link](https://modelcontextprotocol.io/docs/tools/debugging#debugging-in-claude-desktop) for debugging guidance. You can also check the MCP server log with the following command:
-```bash
-tail -n 200 -F ~/Library/Logs/Claude/mcp-server-leettools.log
-```
+3. Restart Claude Desktop then make sure it is picking up the tools we've exposed in this mcp server. You can do this by looking for the hammer icon:
+   <p align="center">
+     <img src="assets/mcp-server-hammer.png" alt="Logo" width="450"/>
+   </p>
+
+   After clicking on the hammer icon, you should see two tools listed:
+   <p align="center">
+     <img src="assets/mcp-server-tools.png" alt="Logo" width="450"/>
+   </p>
+
+4. If you encounter issues, follow this [link](https://modelcontextprotocol.io/docs/tools/debugging#debugging-in-claude-desktop) for debugging guidance. You can also check the MCP server log with the following command:
+    ```bash
+    tail -n 200 -F ~/Library/Logs/Claude/mcp-server-leettools.log
+    ```
 
 ## Example Usage
 
