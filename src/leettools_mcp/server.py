@@ -5,6 +5,7 @@ This module provides a FastMCP-based server that can be used with Claude
 and other AI assistants that support the Model Context Protocol.
 """
 
+from math import log
 import os
 import sys
 import subprocess
@@ -80,7 +81,7 @@ def get_output_filepath(prefix: str) -> Tuple[str, str]:
     return str(output_file), str(log_file)
 
 
-async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any]:
+async def run_leet_command(args: List[str], log_path: str) -> Dict[str, Any]:
     """Run a LeetTools command asynchronously."""
     try:
         # Check if leet is available
@@ -97,13 +98,9 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
                 "stderr": "LeetTools executable not found."
             }
 
-        # Create the output file paths
-        output_path, log_path = get_output_filepath(output_prefix)
-        logger.info(f"Will save output to: {output_path}")
-        logger.info(f"Will save logs to: {log_path}")
 
         # Add the output path to the arguments
-        cmd = [LEET_EXECUTABLE] + args + ["-o", output_path]
+        cmd = [LEET_EXECUTABLE] + args
         
         # Log the command (with query parameter specially formatted)
         display_cmd = []
@@ -161,25 +158,16 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
             logger.error(f"Command failed with exit code {process.returncode}: {stderr_str}")
             return {
                 "success": False,
-                "content": "",
                 "stdout": stdout_str,
                 "stderr": stderr_str,
                 "log_path": log_path
             }
 
-        # Read output file directly
-        content = ""
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-            with open(output_path, "r") as f:
-                content = f.read()
-            logger.info(f"Read {len(content)} bytes from output file: {output_path}")
-        else:
-            logger.warning(f"Output file empty or missing: {output_path}")
-
         return {
             "success": True,
-            "content": content,
             "log_path": log_path,
+            "stdout": stdout_str,
+            "stderr": stderr_str,
             "instructions": (
                 "When present the results, please show the references of the articles with title and full web link. ",
                 "For references, only show relevant links for articles. Don't show links for images. ",
@@ -200,14 +188,52 @@ async def run_leet_command(args: List[str], output_prefix: str) -> Dict[str, Any
             "error": str(e),
         }
 
+async def perform_kb_ops(ops_name: str, args: Optional[List[str]] = None) -> str:
+    """Perform a search using specified search type."""
+    try:
+        logger.info(f"Performing knlowedge base operations")
+
+        # Create the output file paths
+        output_prefix = f"kb_ops_{ops_name}"
+        output_path, log_path = get_output_filepath(output_prefix)
+        logger.info(f"Will save output to: {output_path}")
+        logger.info(f"Will save logs to: {log_path}")
+
+        result = await run_leet_command(args, log_path)
+        if not result["success"]:
+            error_msg = result.get("stderr", "Unknown error")
+            logger.error(f"kb operation {ops_name} failed: {error_msg}")
+            return json.dumps({
+                "error": True,
+                "message": f"Error running kb operation",
+                "details": error_msg,
+                "code": "KB_OPERATION_FAILED",
+            }, indent=2)
+        
+        return result
+
+    except Exception as e:
+        logger.exception(f"Exception in {ops_name} operation: {str(e)}")
+        return json.dumps({
+            "error": True,
+            "message": f"An error occurred performing {ops_name} operation",
+            "details": str(e),
+            "code": f"{ops_name.upper()}_EXCEPTION",
+        }, indent=2)
+
 
 async def perform_search(search_type: str, query: str, kb_name: str, args: Optional[List[str]] = None) -> str:
     """Perform a search using specified search type."""
     try:
         logger.info(f"Performing {search_type} search for: {query}")
 
+        # Create the output file paths
+        output_path, log_path = get_output_filepath(output_prefix)
+        logger.info(f"Will save output to: {output_path}")
+        logger.info(f"Will save logs to: {log_path}")
+
         # Base command for both search types
-        cmd_args = ["flow", "-t", "search", "-k", kb_name, "-q", query, "-l", "INFO"]
+        cmd_args = ["flow", "-t", "search", "-k", kb_name, "-q", query, "-l", "INFO", "-o", output_path]
         
         # Configure search-specific settings
         if search_type == "web":
@@ -233,7 +259,7 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
             cmd_args.extend(args)
 
         # Run the search command with the output prefix
-        result = await run_leet_command(cmd_args, output_prefix)
+        result = await run_leet_command(cmd_args, log_path)
         if not result["success"]:
             error_msg = result.get("stderr", "Unknown error")
             logger.error(f"{search_type.capitalize()} search failed: {error_msg}")
@@ -243,6 +269,16 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
                 "details": error_msg,
                 "code": error_code,
             }, indent=2)
+    
+        # Read the output file and return the content
+        content = ""
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            with open(output_path, "r") as f:
+                content = f.read()
+            logger.info(f"Read {len(content)} bytes from output file: {output_path}")
+        else:
+            logger.warning(f"Output file empty or missing: {output_path}")
+        result["content"] = content
         
         if not result["content"]:
             return json.dumps({
@@ -252,6 +288,9 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
                 "code": no_results_code,
             }, indent=2)
 
+        # remove stdout and stderr from the result
+        result.pop("stdout", None)
+        result.pop("stderr", None)
         return result
 
     except Exception as e:
@@ -262,6 +301,74 @@ async def perform_search(search_type: str, query: str, kb_name: str, args: Optio
             "details": str(e),
             "code": f"{search_type.upper()}_SEARCH_EXCEPTION",
         }, indent=2)
+
+
+@mcp.tool()
+async def add_local_to_kb(
+    local_path: str,
+    knowledge_base_name: str = None,
+) -> str:
+    """
+    Add files in a local folder to a knowledge base using LeetTools.
+
+    Args:
+        local_path: path to the local folder to add.
+        knowledge_base_name: name of the knowledge base to add to.
+    """
+
+    # check if local path exists
+    if not os.path.exists(local_path):
+        return json.dumps({
+            "error": True,
+            "message": "Local path does not exist",
+            "details": f"The specified path '{local_path}' does not exist.",
+            "code": "LOCAL_PATH_NOT_FOUND",
+        }, indent=2)
+    
+    # if knowledge base name is not provided, use the local_path to form the name
+    if not knowledge_base_name:
+        knowledge_base_name = os.path.basename(local_path
+            ).replace(" ", "_").replace("-", "_").replace(".", "_").lower()
+
+    return await perform_kb_ops(
+        ops_name="add_local_to_kb",
+        args=[
+            "kb", "add-local", "-p", local_path, "-k", knowledge_base_name
+        ]
+    )
+
+
+@mcp.tool()
+async def create_kb(
+    knowledge_base_name: str,
+) -> str:
+    """
+    Create a local knowledge base using LeetTools.
+
+    Args:
+        knowledge_base_name: name of the knowledge base to create.
+    """
+    
+    return await perform_kb_ops(
+        ops_name="create_kb",
+        args=[
+            "kb", "create", "-k", knowledge_base_name
+        ]
+    )
+
+
+@mcp.tool()
+async def list_kb(
+) -> str:
+    """
+    List all local knowledge bases using LeetTools.
+    """
+    return await perform_kb_ops(
+        ops_name="list_kb",
+        args=[
+            "kb", "list"
+        ]
+    )
 
 
 @mcp.tool()
