@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Callable, Dict, Any
 from pydantic import BaseModel
 
 from leettools_mcp.constants import Instructions
@@ -13,6 +13,7 @@ class CommandOptions(BaseModel):
     read_output_file: bool = False
     no_stdout_return: bool = True
     no_stderr_return: bool = True
+    stdout_processor: Optional[Callable[[str], Dict[str, Any]]] = None
 
     @staticmethod
     def for_kb_search(kb_name: str) -> 'CommandOptions':
@@ -47,6 +48,34 @@ class CommandOptions(BaseModel):
         return CommandOptions(
             output_prefix=f"{FilePrefixes.KB_OPS}_{operation}",
             error_code=ErrorCodes.KB_OPERATION_FAILED,
-            read_output_file=False
+            read_output_file=False,
+            no_stdout_return=False,
+            no_stderr_return=True
+        )
+
+    @staticmethod
+    def for_list_kb() -> 'CommandOptions':
+        """Create options specifically for list_kb operation"""
+        from leettools_mcp.constants import FilePrefixes, ErrorCodes
+        
+        def process_list_kb_stdout(stdout: str) -> Dict[str, Any]:
+            """Process stdout from list_kb command to extract KB information"""
+            kb_lines = []
+            for line in stdout.splitlines():
+                if line.startswith("Org:"):
+                    kb_lines.append(line)
+            
+            result = {
+                "content": "\n".join(kb_lines) if kb_lines else "No knowledge bases found."
+            }
+            return result
+        
+        return CommandOptions(
+            output_prefix=f"{FilePrefixes.KB_OPS}_list_kb",
+            error_code=ErrorCodes.KB_OPERATION_FAILED,
+            read_output_file=False,
+            no_stdout_return=False,
+            no_stderr_return=True,
+            stdout_processor=process_list_kb_stdout
         )
 

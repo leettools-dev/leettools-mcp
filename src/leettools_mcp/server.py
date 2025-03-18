@@ -106,6 +106,20 @@ async def perform_operation(
             if options.instructins:
                 result.instructions = options.instructins
 
+        # Process stdout if needed using the tool-specific processor
+        if options.stdout_processor and result.stdout:
+            try:
+                # Apply the tool-specific stdout processor
+                processed_result = options.stdout_processor(result.stdout)
+                
+                # Update the result object with processed fields
+                for key, value in processed_result.items():
+                    setattr(result, key, value)
+                
+                logger.info(f"Processed stdout for {operation_type}")
+            except Exception as e:
+                logger.error(f"Error processing stdout: {str(e)}")
+
         # remove stdout and stderr from the result if not required
         if options.no_stdout_return:
             result.stdout = None
@@ -179,11 +193,14 @@ async def create_kb(
 async def list_kb() -> str:
     """
     List all local knowledge bases using LeetTools.
+    
+    Returns information about available knowledge bases in the format:
+    Org: <org-name>    KB: <kb-name>    ID: <kb-id>
     """
     return await perform_operation(
         operation_type=Tools.LIST_KB,
         args=["kb", "list"],
-        options=CommandOptions.for_kb_operation("list_kb")
+        options=CommandOptions.for_list_kb()
     )
 
 
