@@ -19,55 +19,53 @@ from leettools_mcp.utils import (
     CommandError,
 )
 
-from leettools_mcp.constants import (
-    CommandArgs, ErrorCodes
-)
+from leettools_mcp.constants import CommandArgs, ErrorCodes
 
 from leettools_mcp.tools import Tools
 
+MCP_SERVER_NAME = "leettools_mcp"
 # Configure logging to write to stderr instead of stdout
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     stream=sys.stderr,
 )
-logger = logging.getLogger("leettools_mcp")
+logger = logging.getLogger(MCP_SERVER_NAME)
 
-# Initialize FastMCP server with the name "leettools_mcp"
-mcp = FastMCP("leettools_mcp")
+# Initialize FastMCP server with the name
+mcp = FastMCP(MCP_SERVER_NAME)
+
 
 async def perform_operation(
-    operation_type: str,
-    args: List[str],
-    options: CommandOptions
+    operation_type: str, args: List[str], options: CommandOptions
 ) -> str:
     """
     Common operation handler for all LeetTools operations.
-    
+
     Args:
         operation_type: Type of operation (for logging)
         args: Command line arguments to pass to leet
         options: CommandOptions object with execution options
-        
+
     Returns:
         JSON string with the operation results
     """
     try:
         logger.info(f"Performing {operation_type} operation")
-        
+
         # Create the output file paths
         output_path, log_path = get_output_filepath(options.output_prefix)
         logger.info(f"Will save output to: {output_path}")
         logger.info(f"Will save logs to: {log_path}")
-        
+
         # Add output path to arguments if we're going to read it
         cmd_args = args.copy()
         if options.read_output_file:
             cmd_args.extend(["-o", output_path])
-        
+
         # Run the command
         result = await run_leet_command(cmd_args, log_path)
-        
+
         # Handle command failure
         if not result.success:
             error_msg = result.stderr or "Unknown error"
@@ -78,27 +76,29 @@ async def perform_operation(
                 code=options.error_code or f"{operation_type.upper()}_FAILED",
             )
             return error.model_dump_json(indent=2)
-        
-        # If we need to read the output file 
+
+        # If we need to read the output file
         if options.read_output_file:
             content = ""
             if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
                 with open(output_path, "r") as f:
                     content = f.read()
-                logger.info(f"Read {len(content)} bytes from output file: {output_path}")
+                logger.info(
+                    f"Read {len(content)} bytes from output file: {output_path}"
+                )
             else:
                 logger.warning(f"Output file empty or missing: {output_path}")
-                
-            
+
             # Check if we have any content
             if not content and options.no_results_message:
                 error = CommandError(
                     message=options.no_results_message,
                     details=f"The {operation_type} operation did not produce any content.",
-                    code=options.no_results_code or f"NO_{operation_type.upper()}_RESULTS",
+                    code=options.no_results_code
+                    or f"NO_{operation_type.upper()}_RESULTS",
                 )
                 return error.model_dump_json(indent=2)
-        
+
             # Update the result with content from the output file
             result.content = content
 
@@ -111,11 +111,11 @@ async def perform_operation(
             try:
                 # Apply the tool-specific stdout processor
                 processed_result = options.stdout_processor(result.stdout)
-                
+
                 # Update the result object with processed fields
                 for key, value in processed_result.items():
                     setattr(result, key, value)
-                
+
                 logger.info(f"Processed stdout for {operation_type}")
             except Exception as e:
                 logger.error(f"Error processing stdout: {str(e)}")
@@ -128,7 +128,7 @@ async def perform_operation(
 
         # Convert result to JSON string
         return result.model_dump_json()
-            
+
     except Exception as e:
         logger.exception(f"Exception in {operation_type} operation: {str(e)}")
         error = CommandError(
@@ -159,16 +159,28 @@ async def add_local_to_kb(
             code=ErrorCodes.LOCAL_PATH_NOT_FOUND,
         )
         return error.model_dump_json(indent=2)
-    
+
     # If knowledge base name is not provided, use the local_path to form the name
     if not knowledge_base_name:
-        knowledge_base_name = os.path.basename(local_path
-            ).replace(" ", "_").replace("-", "_").replace(".", "_").lower()
+        knowledge_base_name = (
+            os.path.basename(local_path)
+            .replace(" ", "_")
+            .replace("-", "_")
+            .replace(".", "_")
+            .lower()
+        )
 
     return await perform_operation(
         operation_type=Tools.ADD_LOCAL_TO_KB,
-        args=["kb", "add-local", "-p", local_path, "-k", knowledge_base_name],
-        options=CommandOptions.for_kb_operation("add_local_to_kb")
+        args=[
+            "kb",
+            "add-local",
+            "-p",
+            local_path,
+            "-k",
+            knowledge_base_name
+        ],
+        options=CommandOptions.for_kb_operation("add_local_to_kb"),
     )
 
 
@@ -185,7 +197,7 @@ async def create_kb(
     return await perform_operation(
         operation_type=Tools.CREATE_KB,
         args=["kb", "create", "-k", knowledge_base_name],
-        options=CommandOptions.for_kb_operation("create_kb")
+        options=CommandOptions.for_kb_operation("create_kb"),
     )
 
 
@@ -193,14 +205,14 @@ async def create_kb(
 async def list_kb() -> str:
     """
     List all local knowledge bases using LeetTools.
-    
+
     Returns information about available knowledge bases in the format:
     Org: <org-name>    KB: <kb-name>    ID: <kb-id>
     """
     return await perform_operation(
         operation_type=Tools.LIST_KB,
         args=["kb", "list"],
-        options=CommandOptions.for_list_kb()
+        options=CommandOptions.for_list_kb(),
     )
 
 
@@ -221,14 +233,19 @@ async def web_search(
     return await perform_operation(
         operation_type=Tools.WEB_SEARCH,
         args=[
-            "flow", "-t", "search", 
-            "-k", CommandArgs.DEFAULT_KB_NAME, 
-            "-q", query, 
-            "-l", CommandArgs.LOG_LEVEL,
-            "-p", f"search_max_results={search_max_results}",
-            "-p", f"search_iteration={search_iteration}"
+            "flow",
+            "-t",
+            "search",
+            "-k",
+            CommandArgs.DEFAULT_KB_NAME,
+            "-q",
+            query,
+            "-p",
+            f"search_max_results={search_max_results}",
+            "-p",
+            f"search_iteration={search_iteration}",
         ],
-        options=CommandOptions.for_web_search(CommandArgs.DEFAULT_KB_NAME)
+        options=CommandOptions.for_web_search(CommandArgs.DEFAULT_KB_NAME),
     )
 
 
@@ -247,19 +264,25 @@ async def kb_search(
     return await perform_operation(
         operation_type=Tools.KB_SEARCH,
         args=[
-            "flow", "-t", "search", 
-            "-k", knowledge_base_name, 
-            "-q", query, 
-            "-l", CommandArgs.LOG_LEVEL,
-            "-p", "retriever_type=local"
+            "flow",
+            "-t",
+            "search",
+            "-k",
+            knowledge_base_name,
+            "-q",
+            query,
+            "-p",
+            "retriever_type=local",
         ],
-        options=CommandOptions.for_kb_search(knowledge_base_name)
+        options=CommandOptions.for_kb_search(knowledge_base_name),
     )
+
 
 def main():
     """Main entry point for running the LeetTools MCP server."""
     logger.info("Starting LeetTools MCP server...")
     mcp.run(transport="stdio")
+
 
 if __name__ == "__main__":
     main()

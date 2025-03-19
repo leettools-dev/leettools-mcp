@@ -6,6 +6,7 @@ This module contains constant values categorized by their usage area.
 
 import os
 from pathlib import Path
+from re import L
 
 
 class EnvironmentVars:
@@ -23,7 +24,8 @@ class Paths:
 
 class CommandArgs:
     """Command line arguments and defaults"""
-    LOG_LEVEL = "INFO"
+    LOG_LEVEL_INFO = "INFO"
+    LOG_LEVEL_DEBUG = "DEBUG"
     DEFAULT_KB_NAME = "mcp_search"
 
 
