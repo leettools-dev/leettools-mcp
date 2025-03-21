@@ -13,6 +13,20 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
 
 ## Tools
 
+### `list_kb`
+- List all local knowledge bases.
+
+### `create_kb`
+- Create a local knowledge base.
+- **Inputs:**
+  - `knowledge_base_name` (string): name of local knowledge base
+
+### `add_local_to_kb`
+- Add files in a local folder to a knowledge base.
+- **Inputs:**
+  - `local_path`: (string) path to the local folder to add.
+  - `knowledge_base_name`: (string) name of the knowledge base to add to.
+
 ### `web_search`
 - Execute web searches with pagination and filtering
 - **Inputs:**
@@ -50,6 +64,23 @@ export EDS_LLM_API_KEY=<your_openai_api_key>
 leet flow -t search -k mcp_search -q "Anthropic MCP"
 ```
 
+## Usage with 5ire (Recommended)
+1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
+
+2. Go to Tools > New, add fill the following information:
+  - `Tool Key`: LeetTools
+  - `Command`: uv  --directory /ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp run leettools-mcp
+  - `Enviroment Variables`: 
+    - LEET_HOME: <your_leet_home>
+    - EDS_LLM_API_KEY: <your_openai_api_key>
+
+    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
+    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+3. You can also check the 5ire log (on Mac) with the following command:
+    ```bash
+    tail -n200 ~/Library/Logs/5ire/main.log
+    ```
+
 ## Usage with Claude Desktop
 1. Follow this [link](https://support.anthropic.com/en/articles/10065433-installing-claude-for-desktop) to install Claude Destop App.
 
@@ -82,7 +113,7 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
      <img src="assets/mcp-server-hammer.png" alt="Logo" width="450"/>
    </p>
 
-   After clicking on the hammer icon, you should see two tools listed:
+   After clicking on the hammer icon, you should see the tools listed:
    <p align="center">
      <img src="assets/mcp-server-tools.png" alt="Logo" width="450"/>
    </p>
@@ -96,25 +127,23 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
 
 ### Web Search Examples
 
-Try asking Claude:
+Try asking in the MCP client:
 
 > "Can you do a web search and tell me why ServiceNow acquired Moveworks?"
 
-Claude will use the `web_search` tool to retrieve the latest information about the acquisition.
+MCP client will use the `web_search` tool to retrieve the latest information about the acquisition.
 
 ### Knowledge Base Search Examples
 
 Follow these steps to search your own documents:
 
-1. **First, add a document to your knowledge base**:
-   ```bash
-   leet kb add-url -k llmbook -r "https://arxiv.org/pdf/2501.09223"
-   ```
+1. **First, add a local folder with some PDFs to your knowledge base**:
+   > "Can you add local folder /tmp/test into a kb named test_kb?"
 
-2. **Then ask a question in Claude Desktop**:
-   > "Can you search knowledge base 'llmbook' and give me a brief explanation of LLM?"
+2. **Then ask a question about the PDFs**:
+   > "Can you search kb 'test_kb' and give me a brief explanation of LLM?"
 
-Claude will retrieve information from your knowledge base and provide a response based on the documents you've added.
+MCP client will retrieve information from your knowledge base and provide a response based on the documents you've added.
 
 ## License
 
