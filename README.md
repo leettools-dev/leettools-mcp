@@ -69,7 +69,7 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
 
 2. Go to Tools > New, add fill the following information:
   - `Tool Key`: LeetTools
-  - `Command`: uv  --directory /ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp run leettools-mcp
+  - `Command`: npx -y @leettools/leettools-mcp-server
   - `Enviroment Variables`: 
     - LEET_HOME: <your_leet_home>
     - EDS_LLM_API_KEY: <your_openai_api_key>
@@ -90,12 +90,10 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
     {
         "mcpServers": {
             "leettools": {
-                "command": "uv",
+                "command": "npx",
                 "args": [
-                    "--directory",
-                    "/ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp",
-                    "run",
-                    "leettools-mcp"
+                    "-y",
+                    "@leettools/leettools-mcp-server",
                 ],
                 "env": {
                     "LEET_HOME": "Your LeetHome location",
