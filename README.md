@@ -40,30 +40,6 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `query` (string): search query for local knowledge base
   - `knowledge_base_name` (string, optional): name of local knowledge base
 
-## Set up your environment (MacOS/Linux)
-
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone this repository
-
-git clone https://github.com/leettools-dev/leettools-mcp.git
-cd leettools-mcp
-
-# Create virtual environment and install package in development mode
-uv venv
-source .venv/bin/activate
-uv add torch==2.2.2 "mcp[cli]" leettools
-
-# LeetHome: By default the data is saved under ${HOME}/leettools, you can set a different LeetHome
-export LEET_HOME=<your_leet_home>
-export EDS_LLM_API_KEY=<your_openai_api_key>
-
-# Test local exectuion of leettools
-leet flow -t search -k mcp_search -q "Anthropic MCP"
-```
-
 ## Usage with 5ire (Recommended)
 1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
 

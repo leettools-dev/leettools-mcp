@@ -1,67 +1,205 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
+const { execSync, spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-// Helper to run shell commands with logging
-function runCommand(cmd, options = {}) {
-  console.log(`Running: ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', ...options });
+// Setup log file in ~/.npm/_logs/
+const homeDir = process.env.HOME || '';
+const logDir = path.join(homeDir, '.npm', '_logs');
+if (!fs.existsSync(logDir)) {
+  fs.mkdirSync(logDir, { recursive: true });
+}
+const LOG_FILE = path.join(logDir, 'mcp-server-debug.log');
+
+// Helper to format extra info as key=value pairs.
+function formatExtra(extra) {
+  return Object.entries(extra)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(' ');
 }
 
-// 1. Check if uv is installed; if not, install it
-function ensureUv() {
+// Write a plain text log entry to LOG_FILE.
+function writeLog(level, message, extra = {}) {
+  const extraStr = Object.keys(extra).length ? ` ${formatExtra(extra)}` : '';
+  const entry = `${new Date().toISOString()} [${level.toUpperCase()}] ${message}${extraStr}\n`;
   try {
-    execSync('uv --version', { stdio: 'ignore' });
-    console.log('uv is installed.');
-  } catch (error) {
-    console.log('uv is not installed. Installing uv...');
-    runCommand('curl -LsSf https://astral.sh/uv/install.sh | sh');
+    fs.appendFileSync(LOG_FILE, entry);
+  } catch (err) {
+    process.exit(1);
   }
 }
 
-// 2. Ensure virtual environment is created (assumed to be at project root)
-function ensureVenv() {
-  const venvPath = path.join(__dirname, '.venv');
-  if (!fs.existsSync(venvPath)) {
-    console.log('Virtual environment not found. Creating venv...');
-    runCommand('uv venv', { cwd: __dirname });
-  } else {
-    console.log('Virtual environment exists.');
+function logInfo(message, extra = {}) {
+  writeLog('info', message, extra);
+}
+
+function logError(message, extra = {}) {
+  writeLog('error', message, extra);
+}
+
+// Synchronous command runner that captures output and logs it.
+function runCommandSync(cmd, args, options = {}) {
+  logInfo(`Running command: ${cmd} ${args.join(' ')}`, { cwd: options.cwd || process.cwd() });
+  const result = spawnSync(cmd, args, { encoding: 'utf8', shell: true, stdio: 'pipe', ...options });
+  if (result.stdout) {
+    result.stdout.split('\n').forEach(line => {
+      if (line.trim()) logInfo(line.trim());
+    });
+  }
+  if (result.stderr) {
+    result.stderr.split('\n').forEach(line => {
+      if (line.trim()) logError(line.trim());
+    });
+  }
+  if (result.status !== 0) {
+    logError(`Command "${cmd} ${args.join(' ')}" exited with code ${result.status}`);
+    process.exit(result.status);
   }
 }
 
-// 3. Install Python dependencies via uv (e.g. torch, mcp[cli], leettools)
-function installDependencies() {
-  console.log('Installing Python dependencies using uv...');
-  // Change the command if you need additional options or different dependencies
-  runCommand('uv add torch==2.2.2 "mcp[cli]" leettools', { cwd: __dirname });
-}
-
-// 4. Run the MCP server using uv
-function runServer() {
-  // Ensure required environment variables are set; users can override these
-  process.env.LEET_HOME = process.env.LEET_HOME || '/default/leet_home';
-  process.env.EDS_LLM_API_KEY = process.env.EDS_LLM_API_KEY || 'default_api_key';
-
-  // Determine the absolute path to the directory containing your Python project.
-  // For this example, we assume the Python code is in "src/leettools_mcp" and its parent is used by uv.
-  const pythonProjectParent = path.join(__dirname, 'src');
+// Asynchronous command runner that captures stdout and stderr and logs them.
+function runCommandAsync(cmd, args, options = {}) {
+  logInfo(`Running command: ${cmd} ${args.join(' ')}`, { cwd: options.cwd || process.cwd() });
+  const proc = spawn(cmd, args, { stdio: 'pipe', shell: true, ...options });
   
-  console.log('Starting LeetTools MCP server...');
-  // Run the uv command to start the server.
-  runCommand(`uv --directory "${pythonProjectParent}" run leettools-mcp`, { cwd: __dirname });
+  proc.stdout.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      if (line.trim()) logInfo(line.trim());
+    });
+  });
+  
+  proc.stderr.on('data', (data) => {
+    data.toString().split('\n').forEach(line => {
+      if (line.trim()) logError(line.trim());
+    });
+  });
+  
+  proc.on('error', (err) => {
+    logError(`Failed to run command: ${cmd} ${args.join(' ')}`, { error: err.toString() });
+    process.exit(1);
+  });
+  
+  proc.on('exit', (code) => {
+    if (code !== 0) {
+      logError(`Command "${cmd} ${args.join(' ')}" exited with code ${code}`);
+      process.exit(code);
+    }
+  });
+  
+  return proc;
 }
 
-// Main flow
+// Retrieve the full path of uv. If uv is missing or not working, try to install it,
+// then fall back to $HOME/.local/bin/uv if necessary. All output is captured.
+function getUvPath() {
+  try {
+    const uvPath = execSync('which uv', { encoding: 'utf8', stdio: 'pipe' }).trim();
+    execSync(`${uvPath} --version`, { stdio: 'pipe' });
+    return uvPath;
+  } catch (error) {
+    logInfo('uv not found or not working. Attempting to install uv...');
+    try {
+      // Use stdio: 'pipe' so that output is captured (and not printed to console)
+      const installOutput = execSync('curl -LsSf https://astral.sh/uv/install.sh | sh', { encoding: 'utf8', shell: true, stdio: 'pipe' });
+      if (installOutput) logInfo(installOutput);
+    } catch (installError) {
+      logError('Failed to install uv. Please install uv manually.', { installError: installError.toString() });
+      process.exit(1);
+    }
+    try {
+      const uvPath = execSync('which uv', { encoding: 'utf8', stdio: 'pipe' }).trim();
+      execSync(`${uvPath} --version`, { stdio: 'pipe' });
+      return uvPath;
+    } catch (error2) {
+      const fallbackPath = path.join(homeDir, '.local', 'bin', 'uv');
+      if (fs.existsSync(fallbackPath)) {
+        try {
+          execSync(`${fallbackPath} --version`, { stdio: 'pipe' });
+          logInfo(`Using fallback uv at ${fallbackPath}`);
+          return fallbackPath;
+        } catch (fallbackError) {
+          logError('uv at fallback location is not working.', { fallbackError: fallbackError.toString() });
+        }
+      }
+      logError('Error: uv still not found or working after installation.');
+      process.exit(1);
+    }
+  }
+}
+
+const uvExecutable = getUvPath();
+logInfo(`uv executable to be used: ${uvExecutable}`);
+
+// Ensure that the repository "leettools-mcp" is cloned into the current directory.
+function ensureClone() {
+  const repoDir = path.join(__dirname, 'leettools-mcp');
+  if (!fs.existsSync(repoDir)) {
+    logInfo('Repository "leettools-mcp" not found. Cloning repository...');
+    runCommandSync('git', ['clone', 'https://github.com/leettools-dev/leettools-mcp.git'], { cwd: __dirname });
+  } else {
+    logInfo('Repository "leettools-mcp" already exists.');
+  }
+  return repoDir;
+}
+
+// Ensure the virtual environment exists inside the cloned repository.
+function ensureVenv(repoDir) {
+  const venvPath = path.join(repoDir, '.venv');
+  if (!fs.existsSync(venvPath)) {
+    logInfo('Virtual environment not found. Creating venv...');
+    runCommandSync(uvExecutable, ['venv'], { cwd: repoDir });
+  } else {
+    logInfo('Virtual environment exists.');
+  }
+}
+
+// Install Python dependencies via uv inside the cloned repository.
+function installDependencies(repoDir) {
+  logInfo('Installing Python dependencies using uv...');
+  runCommandSync(uvExecutable, ['add', 'torch==2.2.2', 'mcp[cli]', 'leettools'], { cwd: repoDir });
+}
+
+function runServer(repoDir) {
+    // Check for required environment variables; exit if missing.
+    if (!process.env.LEET_HOME) {
+      logError('LEET_HOME environment variable is missing.');
+      process.exit(1);
+    }
+    if (!process.env.EDS_LLM_API_KEY) {
+      logError('EDS_LLM_API_KEY environment variable is missing.');
+      process.exit(1);
+    }
+    logInfo('Environment variables set', {
+      LEET_HOME: process.env.LEET_HOME,
+      EDS_LLM_API_KEY: process.env.EDS_LLM_API_KEY
+    });
+    logInfo('Starting LeetTools MCP server...');
+  
+    // Run the uv command with stdio 'inherit' so that its output appears normally.
+    const proc = spawn(uvExecutable, ['--directory', repoDir, 'run', 'leettools-mcp'], { stdio: 'inherit', shell: true, cwd: repoDir });
+    
+    proc.on('error', (err) => {
+      logError(`Failed to run server command: ${uvExecutable} --directory ${repoDir} run leettools-mcp`, { error: err.toString() });
+      process.exit(1);
+    });
+    
+    proc.on('exit', (code) => {
+      if (code !== 0) {
+        logError(`Server command exited with code ${code}`);
+        process.exit(code);
+      }
+    });
+  }
+  
+// Main flow: clone repo, ensure uv, create venv, install dependencies, then run the server.
 function main() {
   try {
-    ensureUv();
-    ensureVenv();
-    installDependencies();
-    runServer();
+    const repoDir = ensureClone();
+    ensureVenv(repoDir);
+    installDependencies(repoDir);
+    runServer(repoDir);
   } catch (error) {
-    console.error('Error during execution:', error);
+    logError('Error during execution', { error: error.toString() });
     process.exit(1);
   }
 }
