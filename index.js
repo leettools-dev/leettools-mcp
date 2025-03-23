@@ -9,7 +9,7 @@ const logDir = path.join(homeDir, '.npm', '_logs');
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
-const LOG_FILE = path.join(logDir, 'mcp-server-debug.log');
+const LOG_FILE = path.join(logDir, 'leettools-mcp-server-debug.log');
 
 // Helper to format extra info as key=value pairs.
 function formatExtra(extra) {
