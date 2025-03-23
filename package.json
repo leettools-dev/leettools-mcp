@@ -1,0 +1,19 @@
+{
+    "name": "@leettools/leettools-mcp-server",
+    "version": "1.0.8",
+    "description": "CLI for running the LeetTools MCP server (Python-based via uv)",
+    "main": "index.js",
+    "bin": {
+      "leettools-mcp-server": "./index.js"
+    },
+    "scripts": {
+      "start": "leettols-mcp-server"
+    },
+    "author": "leettools-dev",
+    "license": "Apache 2.0",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/leettools-dev/leettools-mcp.git"
+    }
+  }
+  

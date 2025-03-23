@@ -40,29 +40,22 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `query` (string): search query for local knowledge base
   - `knowledge_base_name` (string, optional): name of local knowledge base
 
-## Set up your environment (MacOS/Linux)
+## Usage with 5ire (Recommended)
+1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
 
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+2. Go to Tools > New, add fill the following information:
+  - `Tool Key`: LeetTools
+  - `Command`: npx -y @leettools/leettools-mcp-server
+  - `Enviroment Variables`: 
+    - LEET_HOME: <your_leet_home>
+    - EDS_LLM_API_KEY: <your_openai_api_key>
 
-# Clone this repository
-
-git clone https://github.com/leettools-dev/leettools-mcp.git
-cd leettools-mcp
-
-# Create virtual environment and install package in development mode
-uv venv
-source .venv/bin/activate
-uv add torch==2.2.2 "mcp[cli]" leettools
-
-# LeetHome: By default the data is saved under ${HOME}/leettools, you can set a different LeetHome
-export LEET_HOME=<your_leet_home>
-export EDS_LLM_API_KEY=<your_openai_api_key>
-
-# Test local exectuion of leettools
-leet flow -t search -k mcp_search -q "Anthropic MCP"
-```
+    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
+    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+3. You can also check the 5ire log (on Mac) with the following command:
+    ```bash
+    tail -n200 ~/Library/Logs/5ire/main.log
+    ```
 
 ## Usage with 5ire (Recommended)
 1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
@@ -90,12 +83,10 @@ leet flow -t search -k mcp_search -q "Anthropic MCP"
     {
         "mcpServers": {
             "leettools": {
-                "command": "uv",
+                "command": "npx",
                 "args": [
-                    "--directory",
-                    "/ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp",
-                    "run",
-                    "leettools-mcp"
+                    "-y",
+                    "@leettools/leettools-mcp-server",
                 ],
                 "env": {
                     "LEET_HOME": "Your LeetHome location",
