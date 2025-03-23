@@ -259,7 +259,7 @@ async def kb_search(
 
     Args:
         query: the search query.
-        kb_name: name of the knowledge base to search (defaults to mcp_search).
+        knowledge_base_name: name of the knowledge base to search (defaults to mcp_search).
     """
     return await perform_operation(
         operation_type=Tools.KB_SEARCH,
