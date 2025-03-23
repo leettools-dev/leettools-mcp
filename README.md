@@ -57,6 +57,23 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
     tail -n200 ~/Library/Logs/5ire/main.log
     ```
 
+## Usage with 5ire (Recommended)
+1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
+
+2. Go to Tools > New, add fill the following information:
+  - `Tool Key`: LeetTools
+  - `Command`: uv  --directory /ABSOLUTE/PATH/TO/PARENT/FOLDER/leettools-mcp run leettools-mcp
+  - `Enviroment Variables`: 
+    - LEET_HOME: <your_leet_home>
+    - EDS_LLM_API_KEY: <your_openai_api_key>
+
+    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
+    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+3. You can also check the 5ire log (on Mac) with the following command:
+    ```bash
+    tail -n200 ~/Library/Logs/5ire/main.log
+    ```
+
 ## Usage with Claude Desktop
 1. Follow this [link](https://support.anthropic.com/en/articles/10065433-installing-claude-for-desktop) to install Claude Destop App.
 
