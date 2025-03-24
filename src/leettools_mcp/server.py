@@ -178,7 +178,9 @@ async def add_local_to_kb(
             "-p",
             local_path,
             "-k",
-            knowledge_base_name
+            knowledge_base_name,
+            "-l",
+            CommandArgs.LOG_LEVEL_DEBUG
         ],
         options=CommandOptions.for_kb_operation("add_local_to_kb"),
     )
