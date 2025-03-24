@@ -49,13 +49,19 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `Enviroment Variables`: 
     - LEET_HOME: <your_leet_home>
     - EDS_LLM_API_KEY: <your_openai_api_key>
+    - ENABLE_DEBUG_LOGGING: True (Optional)
 
     > **Important:** You may need to put the full path to the `uv` executable in the command field. 
     > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
+    
 3. You can also check the 5ire log (on Mac) with the following command:
     ```bash
     tail -n200 ~/Library/Logs/5ire/main.log
     ```
+4. Trouble Shooting
+  - `Error: MCP error -2: Request timed out`:
+This error occurs when the MCP server takes too long to process local files via the add_local_to_kb tool. To resolve the issue, restart the MCP server using the UI (turn it off and then on again).
+     
 
 ## Usage with Claude Desktop
 1. Follow this [link](https://support.anthropic.com/en/articles/10065433-installing-claude-for-desktop) to install Claude Destop App.
@@ -73,7 +79,8 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
                 ],
                 "env": {
                     "LEET_HOME": "Your LeetHome location",
-                    "EDS_LLM_API_KEY": "Your OpenAI API Key"
+                    "EDS_LLM_API_KEY": "Your OpenAI API Key",
+                    "CONTEXT_LENGTH": "10000"
                 }
             }
         }
