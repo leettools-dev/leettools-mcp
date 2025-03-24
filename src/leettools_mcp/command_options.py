@@ -49,7 +49,7 @@ class CommandOptions(BaseModel):
             output_prefix=f"{FilePrefixes.KB_OPS}_{operation}",
             error_code=ErrorCodes.KB_OPERATION_FAILED,
             read_output_file=False,
-            no_stdout_return=False,
+            no_stdout_return=True,
             no_stderr_return=True
         )
 
