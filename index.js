@@ -99,6 +99,7 @@ function getUvPath() {
   } catch (error) {
     logInfo('uv not found or not working. Attempting to install uv...');
     try {
+      // Use stdio: 'pipe' so that output is captured (and not printed to console)
       const installOutput = execSync('curl -LsSf https://astral.sh/uv/install.sh | sh', { encoding: 'utf8', shell: true, stdio: 'pipe' });
       if (installOutput) logInfo(installOutput);
     } catch (installError) {

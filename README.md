@@ -49,7 +49,6 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `Enviroment Variables`: 
     - LEET_HOME: <your_leet_home>
     - EDS_LLM_API_KEY: <your_openai_api_key>
-    
 3. You can also check the 5ire log (on Mac) with the following command:
     ```bash
     tail -n200 ~/Library/Logs/5ire/main.log
