@@ -49,10 +49,6 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `Enviroment Variables`: 
     - LEET_HOME: <your_leet_home>
     - EDS_LLM_API_KEY: <your_openai_api_key>
-    - ENABLE_DEBUG_LOGGING: True (Optional)
-
-    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
-    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
     
 3. You can also check the 5ire log (on Mac) with the following command:
     ```bash
@@ -86,8 +82,6 @@ This error occurs when the MCP server takes too long to process local files via 
         }
     }
     ```
-    > **Important:** You may need to put the full path to the `uv` executable in the command field. 
-    > Find it by running `which uv` on macOS/Linux or `where uv` on Windows.
 
 3. Restart Claude Desktop then make sure it is picking up the tools we've exposed in this mcp server. You can do this by looking for the hammer icon:
    <p align="center">
