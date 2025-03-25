@@ -19,7 +19,7 @@ from leettools_mcp.utils import (
     CommandError,
 )
 
-from leettools_mcp.constants import CommandArgs, ErrorCodes
+from leettools_mcp.constants import CommandArgs, EnvironmentVars, ErrorCodes
 
 from leettools_mcp.tools import Tools
 
@@ -98,6 +98,12 @@ async def perform_operation(
                     or f"NO_{operation_type.upper()}_RESULTS",
                 )
                 return error.model_dump_json(indent=2)
+
+            # Check if debug logging is enabled
+            context_length = os.environ.get(EnvironmentVars.CONTEXT_LENGTH)
+            if context_length is not None:
+                logger.info(f"Context length is defined: {context_length}, truncating content")
+                content = content[:int(context_length)]
 
             # Update the result with content from the output file
             result.content = content
@@ -178,7 +184,9 @@ async def add_local_to_kb(
             "-p",
             local_path,
             "-k",
-            knowledge_base_name
+            knowledge_base_name,
+            "-l",
+            CommandArgs.LOG_LEVEL_DEBUG
         ],
         options=CommandOptions.for_kb_operation("add_local_to_kb"),
     )

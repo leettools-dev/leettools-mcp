@@ -90,7 +90,7 @@ function runCommandAsync(cmd, args, options = {}) {
 }
 
 // Retrieve the full path of uv. If uv is missing or not working, try to install it,
-// then fall back to $HOME/.local/bin/uv if necessary. All output is captured.
+// then fall back to $HOME/.local/bin/uv if necessary.
 function getUvPath() {
   try {
     const uvPath = execSync('which uv', { encoding: 'utf8', stdio: 'pipe' }).trim();
@@ -99,7 +99,6 @@ function getUvPath() {
   } catch (error) {
     logInfo('uv not found or not working. Attempting to install uv...');
     try {
-      // Use stdio: 'pipe' so that output is captured (and not printed to console)
       const installOutput = execSync('curl -LsSf https://astral.sh/uv/install.sh | sh', { encoding: 'utf8', shell: true, stdio: 'pipe' });
       if (installOutput) logInfo(installOutput);
     } catch (installError) {
@@ -130,14 +129,24 @@ function getUvPath() {
 const uvExecutable = getUvPath();
 logInfo(`uv executable to be used: ${uvExecutable}`);
 
-// Ensure that the repository "leettools-mcp" is cloned into the current directory.
+// Ensure that the repository "leettools-mcp" is cloned into the LEET_HOME folder.
+// If LEET_HOME doesn't exist, create it.
 function ensureClone() {
-  const repoDir = path.join(__dirname, 'leettools-mcp');
+  if (!process.env.LEET_HOME) {
+    logError('LEET_HOME environment variable is missing.');
+    process.exit(1);
+  }
+  const targetDir = process.env.LEET_HOME;
+  if (!fs.existsSync(targetDir)) {
+    logInfo(`LEET_HOME directory (${targetDir}) does not exist. Creating it...`);
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+  const repoDir = path.join(targetDir, 'leettools-mcp');
   if (!fs.existsSync(repoDir)) {
-    logInfo('Repository "leettools-mcp" not found. Cloning repository...');
-    runCommandSync('git', ['clone', 'https://github.com/leettools-dev/leettools-mcp.git'], { cwd: __dirname });
+    logInfo(`Repository "leettools-mcp" not found in ${targetDir}. Cloning repository...`);
+    runCommandSync('git', ['clone', 'https://github.com/leettools-dev/leettools-mcp.git', repoDir], { cwd: targetDir });
   } else {
-    logInfo('Repository "leettools-mcp" already exists.');
+    logInfo(`Repository "leettools-mcp" already exists in ${targetDir}.`);
   }
   return repoDir;
 }
@@ -160,38 +169,44 @@ function installDependencies(repoDir) {
 }
 
 function runServer(repoDir) {
-    // Check for required environment variables; exit if missing.
-    if (!process.env.LEET_HOME) {
-      logError('LEET_HOME environment variable is missing.');
-      process.exit(1);
-    }
-    if (!process.env.EDS_LLM_API_KEY) {
-      logError('EDS_LLM_API_KEY environment variable is missing.');
-      process.exit(1);
-    }
-    logInfo('Environment variables set', {
-      LEET_HOME: process.env.LEET_HOME,
-      EDS_LLM_API_KEY: process.env.EDS_LLM_API_KEY
-    });
-    logInfo('Starting LeetTools MCP server...');
-  
-    // Run the uv command with stdio 'inherit' so that its output appears normally.
-    const proc = spawn(uvExecutable, ['--directory', repoDir, 'run', 'leettools-mcp'], { stdio: 'inherit', shell: true, cwd: repoDir });
-    
-    proc.on('error', (err) => {
-      logError(`Failed to run server command: ${uvExecutable} --directory ${repoDir} run leettools-mcp`, { error: err.toString() });
-      process.exit(1);
-    });
-    
-    proc.on('exit', (code) => {
-      if (code !== 0) {
-        logError(`Server command exited with code ${code}`);
-        process.exit(code);
-      }
-    });
+  // Check for required environment variables; exit if missing.
+  if (!process.env.LEET_HOME) {
+    logError('LEET_HOME environment variable is missing.');
+    process.exit(1);
   }
+  if (!process.env.EDS_LLM_API_KEY) {
+    logError('EDS_LLM_API_KEY environment variable is missing.');
+    process.exit(1);
+  }
+  logInfo('Environment variables set', {
+    LEET_HOME: process.env.LEET_HOME,
+    EDS_LLM_API_KEY: process.env.EDS_LLM_API_KEY,
+    UV_HTTP_TIMEOUT: 300
+  });
+  logInfo('Starting LeetTools MCP server...');
+
+  // Run the uv command with stdio 'inherit' so that its output appears normally.
+  const proc = spawn(uvExecutable, ['--directory', repoDir, 'run', 'leettools-mcp'], { 
+    stdio: 'inherit', 
+    shell: true, 
+    cwd: repoDir,
+    env: { ...process.env, UV_HTTP_TIMEOUT: '300' }
+  });
   
-// Main flow: clone repo, ensure uv, create venv, install dependencies, then run the server.
+  proc.on('error', (err) => {
+    logError(`Failed to run server command: ${uvExecutable} --directory ${repoDir} run leettools-mcp`, { error: err.toString() });
+    process.exit(1);
+  });
+  
+  proc.on('exit', (code) => {
+    if (code !== 0) {
+      logError(`Server command exited with code ${code}`);
+      process.exit(code);
+    }
+  });
+}
+
+// Main flow: clone repo into LEET_HOME, ensure uv, create venv, install dependencies, then run the server.
 function main() {
   try {
     const repoDir = ensureClone();

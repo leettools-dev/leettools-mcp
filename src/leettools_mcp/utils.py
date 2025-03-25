@@ -15,7 +15,7 @@ from typing import List, Tuple, Optional
 from pydantic import BaseModel
 
 from leettools_mcp.constants import (
-    EnvironmentVars, Paths, ErrorCodes, FilePatterns, Instructions
+    CommandArgs, EnvironmentVars, Paths, ErrorCodes, FilePatterns
 )
 
 logger = logging.getLogger("leettools_mcp")
@@ -102,6 +102,11 @@ async def run_leet_command(cmd_args: List[str], log_path: str) -> CommandResult:
                 stderr="LeetTools executable not found."
             )
 
+        # Check if debug logging is enabled
+        if os.environ.get(EnvironmentVars.ENABLE_DEBUG_LOGGING) == 'True':
+            logger.info("Debug logging enabled, adding debug log level to command")
+            cmd_args.extend(["-l", CommandArgs.LOG_LEVEL_DEBUG])
+            
         # Construct the full command
         cmd = [leet_executable] + cmd_args
         
