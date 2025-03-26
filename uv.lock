@@ -1052,14 +1052,14 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "leettools" },
-    { name = "mcp", extra = ["cli"] },
+    { name = "mcp" },
     { name = "torch" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "leettools", specifier = ">=1.0.17" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.3.0" },
+    { name = "mcp", specifier = ">=1.3.0" },
     { name = "torch", specifier = "==2.2.2" },
 ]
 
@@ -1233,12 +1233,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/00/9d/ac1aaa3de8655a72fe07c0c2901ed35f0da2b3ffb2a1bfc4f46bbd7b6710/mcp-1.4.0.tar.gz", hash = "sha256:5b750b14ca178eeb7b2addbd94adb21785d7b4de5d5f3577ae193d787869e2dd", size = 155809 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/93/05/1cbc9f93900d4348f4e782811f251541d860e7d13c30cd68b402cd9edbd4/mcp-1.4.0-py3-none-any.whl", hash = "sha256:d2760e1ea7635b1e70da516698620a016cde214976416dd894f228600b08984c", size = 73036 },
-]
-
-[package.optional-dependencies]
-cli = [
-    { name = "python-dotenv" },
-    { name = "typer" },
 ]
 
 [[package]]
