@@ -130,6 +130,38 @@ function getUvPath() {
 const uvExecutable = getUvPath();
 logInfo(`uv executable to be used: ${uvExecutable}`);
 
+function checkAndUpdateRepo(repoDir) {
+  // Get the current commit hash
+  const currentHash = execSync('git rev-parse HEAD', { encoding: 'utf8', cwd: repoDir }).trim();
+  
+  // Fetch latest changes
+  runCommandSync('git', ['fetch'], { cwd: repoDir });
+  
+  // Get the latest commit hash of origin/main
+  const latestHash = execSync('git rev-parse origin/main', { encoding: 'utf8', cwd: repoDir }).trim();
+  
+  // If hashes are different, repo needs update
+  if (currentHash !== latestHash) {
+    logInfo('Repository updates found. Updating...');
+    runCommandSync('git', ['pull'], { cwd: repoDir });
+    
+    // Remove existing venv if it exists
+    const venvPath = path.join(repoDir, '.venv');
+    if (fs.existsSync(venvPath)) {
+      logInfo('Removing existing virtual environment...');
+      fs.rmSync(venvPath, { recursive: true, force: true });
+    }
+    
+    // Rebuild venv and reinstall dependencies
+    ensureVenv(repoDir);
+    installDependencies(repoDir);
+    return true;
+  }
+  
+  logInfo('Repository is up to date.');
+  return false;
+}
+
 // Ensure that the repository "leettools-mcp" is cloned into the LEET_HOME folder.
 // If LEET_HOME doesn't exist, create it.
 function ensureClone() {
@@ -147,7 +179,8 @@ function ensureClone() {
     logInfo(`Repository "leettools-mcp" not found in ${targetDir}. Cloning repository...`);
     runCommandSync('git', ['clone', 'https://github.com/leettools-dev/leettools-mcp.git', repoDir], { cwd: targetDir });
   } else {
-    logInfo(`Repository "leettools-mcp" already exists in ${targetDir}.`);
+    logInfo(`Repository "leettools-mcp" exists in ${targetDir}. Checking for updates...`);
+    checkAndUpdateRepo(repoDir);
   }
   return repoDir;
 }
@@ -157,7 +190,7 @@ function ensureVenv(repoDir) {
   const venvPath = path.join(repoDir, '.venv');
   if (!fs.existsSync(venvPath)) {
     logInfo('Virtual environment not found. Creating venv...');
-    runCommandSync(uvExecutable, ['venv'], { cwd: repoDir });
+    runCommandSync(uvExecutable, ['venv', '--python', '3.12.0'], { cwd: repoDir });
   } else {
     logInfo('Virtual environment exists.');
   }
@@ -166,7 +199,7 @@ function ensureVenv(repoDir) {
 // Install Python dependencies via uv inside the cloned repository.
 function installDependencies(repoDir) {
   logInfo('Installing Python dependencies using uv...');
-  runCommandSync(uvExecutable, ['add', 'torch==2.2.2', 'mcp[cli]', 'leettools'], { cwd: repoDir });
+  runCommandSync(uvExecutable, ['add', 'torch==2.2.2', 'mcp', 'leettools'], { cwd: repoDir });
 }
 
 function runServer(repoDir) {
