@@ -57,6 +57,27 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `Error: MCP error -2: Request timed out`:
 This error occurs when the MCP server takes too long to process local files via the add_local_to_kb tool. To resolve the issue, restart the MCP server using the UI (turn it off and then on again).
      
+## Usage with Cursor
+1. Go to Settings > Cursor Settings > MCP -> add new global MCP server.
+2. Add the following to the mcp.json file:
+    ```json
+    {
+        "mcpServers": {
+            "leettools": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@leettools/leettools-mcp-server",
+                ],
+                "env": {
+                    "LEET_HOME": "Your LeetHome location",
+                    "EDS_LLM_API_KEY": "Your OpenAI API Key",
+                    "CONTEXT_LENGTH": "10000"
+                }
+            }
+        }
+    }
+    ```
 
 ## Usage with Claude Desktop
 1. Follow this [link](https://support.anthropic.com/en/articles/10065433-installing-claude-for-desktop) to install Claude Destop App.
