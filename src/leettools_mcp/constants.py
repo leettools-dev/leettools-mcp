@@ -70,3 +70,7 @@ class Instructions:
         "For references, only show relevant links for articles. Don't show links for images. ",
         "If the full web link is not available, then don't show that reference.",
     ]
+    EXTRACT_INSTRUCTIONS = [
+        "The `content` field is a csv format for the extracted data. ",
+        "You should either show it as a table or save the content to a csv file. "
+    ]
