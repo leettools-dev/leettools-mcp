@@ -12,3 +12,4 @@ class Tools(str, Enum):
     CREATE_KB = "create_kb"
     ADD_LOCAL_TO_KB = "add_local_to_kb"
     DIGEST = "digest"
+    EXTRACT = "extract"
