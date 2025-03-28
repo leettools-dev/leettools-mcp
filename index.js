@@ -214,8 +214,8 @@ function runServer(repoDir) {
   }
   logInfo('Environment variables set', {
     LEET_HOME: process.env.LEET_HOME,
-    EDS_LLM_API_KEY: process.env.EDS_LLM_API_KEY,
-    UV_HTTP_TIMEOUT: 300
+    EDS_LLM_API_KEY: `${process.env.EDS_LLM_API_KEY.slice(0, 4)}...${process.env.EDS_LLM_API_KEY.slice(-4)}`,
+    UV_HTTP_TIMEOUT: 600
   });
   logInfo('Starting LeetTools MCP server...');
 
