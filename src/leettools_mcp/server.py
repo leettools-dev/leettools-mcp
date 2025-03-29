@@ -36,103 +36,106 @@ logger = logging.getLogger(MCP_SERVER_NAME)
 mcp = FastMCP(MCP_SERVER_NAME)
 
 
+async def _handle_command_failure(operation_type: str, result, options: CommandOptions) -> str:
+    """Handle command execution failure."""
+    error_msg = result.stderr or "Unknown error"
+    logger.error(f"{operation_type} operation failed: {error_msg}")
+    error = CommandError(
+        message=f"Error running {operation_type}",
+        details=error_msg,
+        code=options.error_code or f"{operation_type.upper()}_FAILED",
+    )
+    return error.model_dump_json(indent=2)
+
+async def _process_output_file(operation_type: str, output_path: str, options: CommandOptions) -> str:
+    """Process the output file and handle content."""
+    content = ""
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+        with open(output_path, "r") as f:
+            content = f.read()
+        logger.info(f"Read {len(content)} bytes from output file: {output_path}")
+    else:
+        logger.warning(f"Output file empty or missing: {output_path}")
+
+    if not content and options.no_results_message:
+        error = CommandError(
+            message=options.no_results_message,
+            details=f"The {operation_type} operation did not produce any content.",
+            code=options.no_results_code or f"NO_{operation_type.upper()}_RESULTS",
+        )
+        return error.model_dump_json(indent=2)
+
+    # Check if debug logging is enabled
+    context_length = os.environ.get(EnvironmentVars.CONTEXT_LENGTH)
+    if context_length is not None:
+        logger.info(f"Context length is defined: {context_length}, truncating content")
+        content = content[:int(context_length)]
+
+    return content
+
+async def _process_stdout(operation_type: str, result, options: CommandOptions) -> None:
+    """Process stdout using the tool-specific processor if available."""
+    if options.stdout_processor and result.stdout:
+        try:
+            processed_result = options.stdout_processor(result.stdout)
+            for key, value in processed_result.items():
+                setattr(result, key, value)
+            logger.info(f"Processed stdout for {operation_type}")
+        except Exception as e:
+            logger.error(f"Error processing stdout: {str(e)}")
+
 async def perform_operation(
-    operation_type: str, args: List[str], options: CommandOptions
+    operation_type: str,
+    args: List[str],
+    knowledge_base_name: str = None,
 ) -> str:
     """
     Common operation handler for all LeetTools operations.
 
     Args:
-        operation_type: Type of operation (for logging)
+        operation_type: Type of operation (from Tools enum)
         args: Command line arguments to pass to leet
-        options: CommandOptions object with execution options
+        knowledge_base_name: Optional knowledge base name for relevant operations
 
     Returns:
         JSON string with the operation results
     """
     try:
         logger.info(f"Performing {operation_type} operation")
+        options = CommandOptions.get_command_options(operation_type, knowledge_base_name)
 
-        # Create the output file paths
+        # Setup output paths and command arguments
         output_path, log_path = get_output_filepath(options.output_prefix)
         logger.info(f"Will save output to: {output_path}")
         logger.info(f"Will save logs to: {log_path}")
 
-        # Add output path to arguments if we're going to read it
         cmd_args = args.copy()
         if options.read_output_file:
             cmd_args.extend(["-o", output_path])
 
-        # Run the command
+        # Execute command
         result = await run_leet_command(cmd_args, log_path)
-
-        # Handle command failure
         if not result.success:
-            error_msg = result.stderr or "Unknown error"
-            logger.error(f"{operation_type} operation failed: {error_msg}")
-            error = CommandError(
-                message=f"Error running {operation_type}",
-                details=error_msg,
-                code=options.error_code or f"{operation_type.upper()}_FAILED",
-            )
-            return error.model_dump_json(indent=2)
+            return await _handle_command_failure(operation_type, result, options)
 
-        # If we need to read the output file
+        # Process output file if needed
         if options.read_output_file:
-            content = ""
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
-                with open(output_path, "r") as f:
-                    content = f.read()
-                logger.info(
-                    f"Read {len(content)} bytes from output file: {output_path}"
-                )
-            else:
-                logger.warning(f"Output file empty or missing: {output_path}")
-
-            # Check if we have any content
-            if not content and options.no_results_message:
-                error = CommandError(
-                    message=options.no_results_message,
-                    details=f"The {operation_type} operation did not produce any content.",
-                    code=options.no_results_code
-                    or f"NO_{operation_type.upper()}_RESULTS",
-                )
-                return error.model_dump_json(indent=2)
-
-            # Check if debug logging is enabled
-            context_length = os.environ.get(EnvironmentVars.CONTEXT_LENGTH)
-            if context_length is not None:
-                logger.info(f"Context length is defined: {context_length}, truncating content")
-                content = content[:int(context_length)]
-
-            # Update the result with content from the output file
+            content = await _process_output_file(operation_type, output_path, options)
+            if isinstance(content, str) and content.startswith('{'): # Check if it's an error JSON
+                return content
             result.content = content
-
-            # Add instructions to the result if available
             if options.instructins:
                 result.instructions = options.instructins
 
-        # Process stdout if needed using the tool-specific processor
-        if options.stdout_processor and result.stdout:
-            try:
-                # Apply the tool-specific stdout processor
-                processed_result = options.stdout_processor(result.stdout)
+        # Process stdout if needed
+        await _process_stdout(operation_type, result, options)
 
-                # Update the result object with processed fields
-                for key, value in processed_result.items():
-                    setattr(result, key, value)
-
-                logger.info(f"Processed stdout for {operation_type}")
-            except Exception as e:
-                logger.error(f"Error processing stdout: {str(e)}")
-
-        # remove stdout and stderr from the result if not required
+        # Clean up result
         if options.no_stdout_return:
             result.stdout = None
         if options.no_stderr_return:
             result.stderr = None
 
-        # Convert result to JSON string
         return result.model_dump_json()
 
     except Exception as e:
@@ -188,7 +191,7 @@ async def add_local_to_kb(
             "-l",
             CommandArgs.LOG_LEVEL_DEBUG
         ],
-        options=CommandOptions.for_kb_operation("add_local_to_kb"),
+        knowledge_base_name=knowledge_base_name,
     )
 
 
@@ -205,7 +208,7 @@ async def create_kb(
     return await perform_operation(
         operation_type=Tools.CREATE_KB,
         args=["kb", "create", "-k", knowledge_base_name],
-        options=CommandOptions.for_kb_operation("create_kb"),
+        knowledge_base_name=knowledge_base_name,
     )
 
 
@@ -220,7 +223,7 @@ async def list_kb() -> str:
     return await perform_operation(
         operation_type=Tools.LIST_KB,
         args=["kb", "list"],
-        options=CommandOptions.for_list_kb(),
+        knowledge_base_name=None,
     )
 
 
@@ -229,6 +232,7 @@ async def web_search(
     query: str,
     search_max_results: int = 10,
     search_iteration: int = 1,
+    knowledge_base_name: str = CommandArgs.DEFAULT_KB_NAME,
 ) -> str:
     """
     Search the web for information on a topic using LeetTools.
@@ -237,6 +241,7 @@ async def web_search(
         query: the search query.
         search_max_results: maximum search results to process (default: 10).
         search_iteration: number of search iterations to perform (default: 1).
+        knowledge_base_name: name of the knowledge base to search (defaults to mcp_search).
     """
     return await perform_operation(
         operation_type=Tools.WEB_SEARCH,
@@ -253,7 +258,7 @@ async def web_search(
             "-p",
             f"search_iteration={search_iteration}",
         ],
-        options=CommandOptions.for_web_search(CommandArgs.DEFAULT_KB_NAME),
+        knowledge_base_name=knowledge_base_name,
     )
 
 
@@ -282,9 +287,45 @@ async def kb_search(
             "-p",
             "retriever_type=local",
         ],
-        options=CommandOptions.for_kb_search(knowledge_base_name),
+        knowledge_base_name=knowledge_base_name,
     )
 
+
+@mcp.tool()
+async def extract(
+    query: str,
+    extract_pydantic: str,
+    knowledge_base_name: str = CommandArgs.DEFAULT_KB_NAME,
+    days_limit: int = 30,
+) -> str:
+    """
+    Extract information from a knowledge base based on a query and a time limit.
+
+    Args:
+        query: the search query to extract relevant data.
+        extract_pydantic: the Pydantic model python file full path to use for extracting the data.
+        knowledge_base_name: name of the knowledge base to search (defaults to mcp_search).
+        days_limit: the number of days to search for (defaults to 30).
+    """
+    return await perform_operation(
+        operation_type=Tools.EXTRACT,
+        args=[
+            "flow",
+            "-t",
+            "extract",
+            "-k",   
+            knowledge_base_name,
+            "-q",
+            query,
+            "-p",
+            f"extract_pydantic={extract_pydantic}",
+            "-p",
+            f"days_limit={days_limit}",
+            "-p",
+            "extract_output_format=csv",
+        ],
+        knowledge_base_name=knowledge_base_name,
+    )
 
 def main():
     """Main entry point for running the LeetTools MCP server."""

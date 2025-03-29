@@ -33,12 +33,21 @@ LeetTools MCP server distinguishes itself from other web search MCP servers by i
   - `query` (string): web search query
   - `search_max_results` (number, optional): Maximum Search Results (default 1)
   - `search_iteration` (number, optional): Search Pagination (default 1)
+  - `knowledge_base_name` (string, optional): name of local knowledge base (default mcp_search)
 
 ### `knowledge_base_search`
 - Search for local knowledge base
 - **Inputs:**
   - `query` (string): search query for local knowledge base
-  - `knowledge_base_name` (string, optional): name of local knowledge base
+  - `knowledge_base_name` (string, optional): name of local knowledge base (default mcp_search)
+
+### `extract`
+- Extract information from a knowledge base based on a query.
+- **Inputs:**
+  - `query` (string): search query for local knowledge base
+  - `extract_pydantic` (string): the Pydantic model python file full path to use for extracting the data
+  - `knowledge_base_name` (string, optional): name of local knowledge base (default mcp_search)
+  - `days_limit` (number, optional): the number of days to search for (defaults to 30)
 
 ## Usage with 5ire (Recommended)
 1. Follow this [link](https://5ire.app/) to install 5ire MCP client.
